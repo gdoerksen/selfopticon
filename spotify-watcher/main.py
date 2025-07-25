@@ -98,14 +98,18 @@ class RequestAccessToken:
 class RefreshToken:
     def __init__(self):
         self.refresh_token = os.getenv("SPOTIFY_REFRESH_TOKEN")
+        self.client_id = os.getenv("SPOTIFY_CLIENT_ID")
+        self.client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
         self.base_64 = os.getenv("SPOTIFY_BASE_64")
 
     def refresh(self):
         query = "https://accounts.spotify.com/api/token"
+        credentials = f"{self.client_id}:{self.client_secret}"
+        authorization = "Basic " + base64.urlsafe_b64encode(credentials.encode()).decode()
         response = requests.post(
             query,
             data={"grant_type": "refresh_token", "refresh_token": self.refresh_token},
-            headers={"Authorization": "Basic " + self.base_64},
+            headers={"Authorization": authorization},
         )
 
         response_json = response.json()
@@ -157,7 +161,8 @@ if __name__ == "__main__":
     # token_retriever = RefreshToken()
     # token_retriever.refresh()
 
-    access_token = os.getenv("SPOTIFY_AUTH_TOKEN")
+    # access_token = os.getenv("SPOTIFY_AUTH_TOKEN")
+    access_token = RefreshToken().refresh()
 
     recently_played = GetRecentlyPlayed(access_token)
     recently_played_tracks = recently_played.get_recently_played(limit=10)
@@ -169,5 +174,26 @@ if __name__ == "__main__":
 
     """
     me/player/recently-played
+    
+    items
+    - a list of tracks
+
+    for each items.track:
+    - album.id
+    - album.name
+    - ? album.release_date
+    - artists (list)
+        - id, name
+    - duration_ms
+    - id
+    - external_ids (dict)
+        - isrc (International Standard Recording Code)
+    - name
+    - popularity
+    - played_at
+    
+    If we were going full deduplicated then we just need
+    - id
+    - played_at
 
     """
