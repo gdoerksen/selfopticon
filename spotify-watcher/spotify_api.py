@@ -2,8 +2,9 @@
 Spotify API interaction classes
 """
 import requests
+import time
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Generator
 
 
 class GetRecentlyPlayed:
@@ -97,6 +98,10 @@ class GetRecentlyPlayed:
                 first_artist_id = artists[0].get('id') if artists else None
                 first_artist_name = artists[0].get('name') if artists else None
                 
+                # Get ISRC (International Standard Recording Code)
+                external_ids = track.get('external_ids', {})
+                isrc = external_ids.get('isrc')
+                
                 record = {
                     'played_at': played_at,
                     'selfopticon_user_id': selfopticon_user_id,
@@ -108,7 +113,8 @@ class GetRecentlyPlayed:
                     'album_id': album.get('id'),
                     'album_name': album.get('name'),
                     'first_artist_id': first_artist_id,
-                    'first_artist_name': first_artist_name
+                    'first_artist_name': first_artist_name,
+                    'isrc': isrc
                 }
                 
                 # Only add records with required fields
@@ -138,3 +144,168 @@ class GetRecentlyPlayed:
         """
         raw_response = self.get_recently_played(limit=limit, after=after, before=before)
         return self.parse_track_history(raw_response, selfopticon_user_id, spotify_user_id)
+
+    def get_all_tracks_since(self, start_time: int, selfopticon_user_id: str, spotify_user_id: str, 
+                           end_time: Optional[int] = None, limit: int = 50, 
+                           sleep_between_requests: float = 0.1) -> List[Dict]:
+        """
+        Get all recently played tracks from start_time forward, handling pagination automatically.
+        
+        Args:
+            start_time (int): Unix timestamp in milliseconds - fetch tracks played after this time
+            selfopticon_user_id (str): Internal user ID for selfopticon system
+            spotify_user_id (str): Spotify user ID
+            end_time (int, optional): Unix timestamp in milliseconds - stop fetching tracks after this time.
+                                    If None, fetches until current time.
+            limit (int): Number of tracks per API call (1-50, default 50 for efficiency)
+            sleep_between_requests (float): Seconds to sleep between API calls to respect rate limits
+            
+        Returns:
+            List[Dict]: List of all structured track history records from start_time to end_time
+            
+        Raises:
+            ValueError: If parameters are invalid
+            Exception: If API requests fail
+        """
+        if end_time is None:
+            end_time = int(time.time() * 1000)  # Current time in milliseconds
+            
+        if start_time >= end_time:
+            raise ValueError("start_time must be before end_time")
+            
+        all_tracks = []
+        current_after = start_time
+        
+        print(f"Fetching tracks from {datetime.fromtimestamp(start_time/1000)} to {datetime.fromtimestamp(end_time/1000)}")
+        
+        while True:
+            try:
+                # Get next batch of tracks
+                response = self.get_recently_played(limit=limit, after=current_after)
+                
+                if not response or 'items' not in response or not response['items']:
+                    # print("No more tracks found")
+                    break
+                
+                # Parse the tracks
+                parsed_tracks = self.parse_track_history(response, selfopticon_user_id, spotify_user_id)
+                
+                # Filter tracks that are within our time range
+                filtered_tracks = []
+                for track in parsed_tracks:
+                    track_time_ms = int(track['played_at'].timestamp() * 1000)
+                    if track_time_ms <= end_time:
+                        filtered_tracks.append(track)
+                    else:
+                        print(f"Reached end_time, stopping at track played at {track['played_at']}")
+                        all_tracks.extend(filtered_tracks)
+                        return all_tracks
+                
+                all_tracks.extend(filtered_tracks)
+                print(f"Fetched {len(filtered_tracks)} tracks, total: {len(all_tracks)}")
+                
+                # Check if we have more data to fetch
+                if 'next' not in response or not response['next']:
+                    print("No next page available")
+                    break
+                    
+                # Update cursor for next request
+                if 'cursors' in response and 'after' in response['cursors']:
+                    current_after = int(response['cursors']['after'])
+                else:
+                    print("No after cursor found, stopping pagination")
+                    break
+                
+                # Respect rate limits
+                if sleep_between_requests > 0:
+                    time.sleep(sleep_between_requests)
+                    
+            except Exception as e:
+                print(f"Error during pagination: {e}")
+                raise
+                
+        return all_tracks
+
+    def paginate_tracks_generator(self, start_time: int, selfopticon_user_id: str, spotify_user_id: str,
+                                end_time: Optional[int] = None, limit: int = 50,
+                                sleep_between_requests: float = 0.1) -> Generator[List[Dict], None, None]:
+        """
+        Generator that yields batches of tracks from start_time forward, handling pagination.
+        Useful for processing large datasets without loading everything into memory.
+        
+        Args:
+            start_time (int): Unix timestamp in milliseconds - fetch tracks played after this time
+            selfopticon_user_id (str): Internal user ID for selfopticon system  
+            spotify_user_id (str): Spotify user ID
+            end_time (int, optional): Unix timestamp in milliseconds - stop fetching tracks after this time.
+                                    If None, fetches until current time.
+            limit (int): Number of tracks per API call (1-50, default 50 for efficiency)
+            sleep_between_requests (float): Seconds to sleep between API calls to respect rate limits
+            
+        Yields:
+            List[Dict]: Batch of structured track history records
+            
+        Raises:
+            ValueError: If parameters are invalid
+            Exception: If API requests fail
+        """
+        if end_time is None:
+            end_time = int(time.time() * 1000)  # Current time in milliseconds
+            
+        if start_time >= end_time:
+            raise ValueError("start_time must be before end_time")
+            
+        current_after = start_time
+        
+        print(f"Starting pagination from {datetime.fromtimestamp(start_time/1000)} to {datetime.fromtimestamp(end_time/1000)}")
+        
+        while True:
+            try:
+                # Get next batch of tracks
+                response = self.get_recently_played(limit=limit, after=current_after)
+                
+                if not response or 'items' not in response or not response['items']:
+                    print("No more tracks found")
+                    break
+                
+                # Parse the tracks
+                parsed_tracks = self.parse_track_history(response, selfopticon_user_id, spotify_user_id)
+                
+                # Filter tracks that are within our time range
+                filtered_tracks = []
+                should_stop = False
+                
+                for track in parsed_tracks:
+                    track_time_ms = int(track['played_at'].timestamp() * 1000)
+                    if track_time_ms <= end_time:
+                        filtered_tracks.append(track)
+                    else:
+                        print(f"Reached end_time, stopping at track played at {track['played_at']}")
+                        should_stop = True
+                        break
+                
+                if filtered_tracks:
+                    yield filtered_tracks
+                
+                if should_stop:
+                    break
+                
+                # Check if we have more data to fetch
+                if 'next' not in response or not response['next']:
+                    print("No next page available")
+                    break
+                    
+                # Update cursor for next request
+                if 'cursors' in response and 'after' in response['cursors']:
+                    current_after = int(response['cursors']['after'])
+                else:
+                    print("No after cursor found, stopping pagination")
+                    break
+                
+                # Respect rate limits
+                if sleep_between_requests > 0:
+                    time.sleep(sleep_between_requests)
+                    
+            except Exception as e:
+                print(f"Error during pagination: {e}")
+                raise
