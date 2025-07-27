@@ -5,9 +5,9 @@ import json
 import logging
 from dotenv import load_dotenv
 
-from auth import RefreshToken
-from spotify_api import GetRecentlyPlayed
-from database import SpotifyTrackHistoryDB
+from spotify_watcher.auth import RefreshToken
+from spotify_watcher.spotify_api import GetRecentlyPlayed
+from spotify_watcher.database import SpotifyTrackHistoryDB
 
 # Setup logging
 logging.basicConfig(
@@ -31,7 +31,7 @@ def main():
     logger.info("Starting Spotify watcher application")
 
     # Initialize database
-    db = SpotifyTrackHistoryDB()
+    db = SpotifyTrackHistoryDB(db_path="data/spotify_track_history.db")
     
     # Get access token using refresh token
     token_refresher = RefreshToken()
@@ -42,8 +42,8 @@ def main():
     recently_played_tracks = recently_played.get_recently_played(limit=50)
 
     # Save the raw recently played tracks to a file for debugging
-    with open("recently_played.json", "w") as f:
-        json.dump(recently_played_tracks, f, indent=2)
+    # with open("recently_played.json", "w") as f:
+        # json.dump(recently_played_tracks, f, indent=2)
     
     logger.info(f"Fetched {len(recently_played_tracks.get('items', []))} recently played tracks from Spotify API")
     

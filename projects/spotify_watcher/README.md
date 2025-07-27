@@ -5,7 +5,7 @@ A Python application to track and save a user's recently played Spotify tracks w
 ## Project Structure
 
 ```
-spotify-watcher/
+spotify_watcher/
 ├── main.py          # Main entry point
 ├── auth.py          # Authentication classes
 ├── spotify_api.py   # Spotify API interaction classes
