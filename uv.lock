@@ -4,7 +4,7 @@ requires-python = ">=3.12"
 [manifest]
 members = [
     "selfopticon",
-    "spotify-watcher",
+    "spotify_watcher",
 ]
 
 [[package]]
@@ -151,7 +151,7 @@ dev = [
 ]
 
 [[package]]
-name = "spotify-watcher"
+name = "spotify_watcher"
 version = "0.1.0"
 source = { editable = "projects/spotify_watcher" }
 dependencies = [
