@@ -11,15 +11,6 @@ dev = [
     "pyright>=1.1.403",
     "ruff>=0.12.5",
 ]
-dagger = [
-    "monorepo-dagger",
-]
 
 [tool.uv.workspace]
 members = ['projects/*']
-
-[tool.uv.sources]
-monorepo-dagger = { path = ".dagger" }
-
-[project.entry-points."dagger.mod"]
-main_object = "monorepo_dagger:MonorepoDagger"
