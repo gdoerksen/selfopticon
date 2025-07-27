@@ -5,9 +5,9 @@ import json
 import logging
 from dotenv import load_dotenv
 
-from auth import RefreshToken
-from spotify_api import GetRecentlyPlayed
-from database import SpotifyTrackHistoryDB
+from spotify_watcher.auth import RefreshToken
+from spotify_watcher.spotify_api import GetRecentlyPlayed
+from spotify_watcher.database import SpotifyTrackHistoryDB
 
 # Setup logging
 logging.basicConfig(

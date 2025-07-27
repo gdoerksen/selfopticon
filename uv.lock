@@ -4,7 +4,7 @@ requires-python = ">=3.12"
 [manifest]
 members = [
     "selfopticon",
-    "spotify-watcher",
+    "spotify_watcher",
 ]
 
 [[package]]
@@ -611,9 +611,9 @@ wheels = [
 ]
 
 [[package]]
-name = "spotify-watcher"
+name = "spotify_watcher"
 version = "0.1.0"
-source = { virtual = "projects/spotify-watcher" }
+source = { editable = "projects/spotify_watcher" }
 dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },

@@ -48,6 +48,31 @@ class MonorepoDagger:
     for projects within this monorepo.
     """
 
+
+    @function
+    async def run_main_from_container(
+        self,
+        root_dir: RootDir,
+        project: str,
+    ) -> Container:
+        """Run a specific project within the monorepo."""
+        container = await self.build_project(root_dir, project)
+
+        # we run the main function of the project
+        # (which is expected to be defined in the project's pyproject.toml)
+        container = container.with_exec(
+            [
+                "uv",
+                "run",
+                "--package",
+                project,
+                project
+            ]
+        )
+
+        await container.sync()
+        return container
+
     @function
     async def build_project(
         self,

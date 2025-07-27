@@ -1,5 +1,5 @@
 [project]
-name = "spotify-watcher"
+name = "spotify_watcher"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -12,8 +12,8 @@ dependencies = [
     "requests>=2.32.4",
 ]
 
-# [project.scripts]
-# spotify-watcher = "spotify-watcher:main"
+[project.scripts]
+spotify_watcher = "spotify_watcher.main:main"
 
 [build-system]
 requires = ["hatchling"]
